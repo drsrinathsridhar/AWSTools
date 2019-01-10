@@ -28,6 +28,11 @@ if __name__ == '__main__':
             ArgVal = 'None'
         print('{:<15}:   {:<50}'.format(Arg, ArgVal))
 
+    # First create a subnet to use for this project
+    'aws ec2 create-subnet  --cidr-block 10.0.1.0/24'
+
+    subprocess.call(['aws', 'ec2', 'create-subnet', '--vpc-id vpc-a01106c2'])
+
     # 'aws ec2 run-instances --image-id ami-0c9ae74667b049f59 --count 1 --instance-type p3.2xlarge --key-name ssrinath_aws --security-groups default'
-    subprocess.call(['df', '-h'])
+    subprocess.call(['watch', '-n', '1', 'nvidia-smi'])
 
