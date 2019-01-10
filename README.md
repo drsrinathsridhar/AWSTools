@@ -4,6 +4,7 @@ Some scripts and tools for running deep learning jobs on AWS.
 ## Requirements
 - Linux
 - Python 3+
+- [AWS Command Line Interface][2]
 - AWS account ID and key
 - Enough credits to create GPU instances (these are expensive, beware!)
 
@@ -33,3 +34,4 @@ Srinath Sridhar
 <ssrinath@cs.stanford.edu>
 
 [1]: https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-configure.html
+[2]: https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-install.html
