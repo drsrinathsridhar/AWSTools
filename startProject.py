@@ -16,7 +16,8 @@ Parser.add_argument('--key-path', help='Provide path to private SSH key correspo
 Parser.add_argument('--vpc-id', help='Provide the ID of VPC to use. If not provided some default VPC is used.', required=False, default='None')
 Parser.add_argument('--security-group', help='Provide an optional security-group. If not provided, ''default'' will be used.', required=False, default='default')
 
-EFSScript = './scripts/makeEFSProjectDir.sh'
+EFSScriptName = 'makeEFSProjectDir.sh'
+EFSScript = './scripts/' + EFSScriptName
 
 if __name__ == '__main__':
     if 'linux' not in str(sys.platform):
@@ -44,8 +45,10 @@ if __name__ == '__main__':
         print('[ INFO ]: Done creating new instance', InstanceID, 'with IP address', InstanceIP)
 
         # Create EFS project directories
-        print('[ INFO ]: SSHing into machine to setup EFS directories...')
-        Command = ['ssh', '-o', 'StrictHostKeyChecking no', '-o', 'ConnectTimeout=1000', '-i', Args.key_path, 'ubuntu@'+InstanceIP, 'bash -s', '< ' + EFSScript]
+        print('[ INFO ]: SSHing into machine to setup EFS directories... This may take several seconds to a few minutes.')
+        Command = ['scp', '-o', 'StrictHostKeyChecking=no', '-o', 'ConnectTimeout=1000', '-i', Args.key_path, EFSScript, 'ubuntu@'+InstanceIP+':~/']
+        Output = utils.runCommandList(Command)
+        Command = ['ssh', '-o', 'StrictHostKeyChecking=no', '-o', 'ConnectTimeout=1000', '-i', Args.key_path, 'ubuntu@'+InstanceIP, 'bash ' + EFSScriptName + ' ' + Args.efs_name + ' ' + Args.project_name]
         Output = utils.runCommandList(Command)
         utils.printOutput(Output)
     except:
