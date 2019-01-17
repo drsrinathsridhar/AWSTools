@@ -12,7 +12,7 @@ Some scripts and tools for running deep learning jobs on AWS.
 
 ### Initial Setup
 1. Setup your AWS CLI tools by running ``aws configure``. See the [AWS CLI documentation][1] for details.
-2. [ Optional ]: Setup shared EFS storage space for **data**---input datasets, output models and weights, and logs (including console outputs).
+2. You must setup a shared EFS storage space for **data**---input datasets, output models and weights, and logs (including console outputs). See next for instructions.
 
 ### [ Optional ]: EFS Setup
 

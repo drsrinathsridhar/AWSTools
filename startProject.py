@@ -19,6 +19,9 @@ Parser.add_argument('--security-group', help='Provide an optional security-group
 EFSScriptName = 'makeEFSProjectDir.sh'
 EFSScript = './scripts/' + EFSScriptName
 
+CheckDirScriptName = 'checkDirectoryExists.sh'
+CheckDirScript = './scripts/' + CheckDirScriptName
+
 if __name__ == '__main__':
     if 'linux' not in str(sys.platform):
         raise RuntimeError('Unsupported OS. Only Linux is supported.')
@@ -29,7 +32,7 @@ if __name__ == '__main__':
     BaseEC2Call = 'aws ec2 '
     BaseEFSCall = 'aws efs '
 
-    # Create EFS directories and check if project name already exists
+    # Mount EFS directory and check if project name already exists
     FreeTierAMI = 'ami-0653e888ec96eab9b'
     FreeTierInstanceType = 't2.micro'
     Command = BaseEC2Call + 'run-instances --image-id ' + FreeTierAMI + ' --count 1 --instance-type ' + FreeTierInstanceType + ' --key-name ' + Args.key_name + ' --security-groups ' + Args.security_group
@@ -44,11 +47,21 @@ if __name__ == '__main__':
         InstanceIP = utils.getEC2InstPublicIP(InstanceID)
         print('[ INFO ]: Done creating new instance', InstanceID, 'with IP address', InstanceIP)
 
-        # Create EFS project directories
+        # Mount EFS directory
         print('[ INFO ]: SSHing into machine to setup EFS directories... This may take several seconds to a few minutes.')
+        # Copy scripts to instance
         Command = ['scp', '-o', 'StrictHostKeyChecking=no', '-o', 'ConnectTimeout=1000', '-i', Args.key_path, EFSScript, 'ubuntu@'+InstanceIP+':~/']
         Output = utils.runCommandList(Command)
+        Command = ['scp', '-o', 'StrictHostKeyChecking=no', '-o', 'ConnectTimeout=1000', '-i', Args.key_path, CheckDirScript, 'ubuntu@'+InstanceIP+':~/']
+        Output = utils.runCommandList(Command)
+
+        # Run script
         Command = ['ssh', '-o', 'StrictHostKeyChecking=no', '-o', 'ConnectTimeout=1000', '-i', Args.key_path, 'ubuntu@'+InstanceIP, 'bash ' + EFSScriptName + ' ' + Args.efs_name + ' ' + Args.project_name]
+        Output = utils.runCommandList(Command)
+        utils.printOutput(Output)
+        # Check if project directory exists. If yes, print details of created isntances, existing instances, subnets, etc.
+        # If not, create directory and proceed
+        Command = ['ssh', '-o', 'StrictHostKeyChecking=no', '-o', 'ConnectTimeout=1000', '-i', Args.key_path, 'ubuntu@'+InstanceIP, 'bash ' + CheckDirScriptName + ' ./efs/' + Args.project_name]
         Output = utils.runCommandList(Command)
         utils.printOutput(Output)
     except:
