@@ -168,7 +168,10 @@ def printEC2Status(EC2Client):
             for Key in INS:
                 if Key == 'NetworkInterfaces':
                     if len(INS[Key]) > 0:
-                        print(FormatString.format(str(INS[Key][0]['Association']['PublicIp'])), end='')
+                        if 'Association' in INS[Key][0]:
+                            print(FormatString.format(str(INS[Key][0]['Association']['PublicIp'])), end='')
+                        else:
+                            print('Initializing...', end='')
                     else:
                         print(FormatString.format('NA'), end='')
                 elif Key == 'State':
@@ -179,9 +182,9 @@ def printEC2Status(EC2Client):
     print(HBar)
 
 
-def createEC2(EC2Client, KeyName, ImageId=AMI_FREETIER, InstanceType=INSTANCE_TYPE_FREETIER, DryRun=True):
+def createEC2(EC2Client, KeyName, ImageId=AMI_FREETIER, InstanceType=INSTANCE_TYPE_FREETIER, MaxCount=1, DryRun=True):
     try:
-        CreateResponse = EC2Client.create_instances(ImageId=ImageId, InstanceType=InstanceType, KeyName=KeyName, DryRun=DryRun)
+        CreateResponse = EC2Client.run_instances(ImageId=ImageId, InstanceType=InstanceType, KeyName=KeyName, MinCount=1, MaxCount=MaxCount, DryRun=DryRun)
         print(CreateResponse)
         # EC2Name = CreateResponse['FileSystemId']
         # CreateResponse = EC2Client.create_tags(FileSystemId=FSName,

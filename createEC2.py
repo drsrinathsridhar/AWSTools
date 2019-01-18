@@ -1,4 +1,4 @@
-import sys, argparse, boto3, time, random
+import sys, argparse, boto3, time, random, os
 import utils
 
 Parser = argparse.ArgumentParser(description='Script to create EC2 instances.')
@@ -6,10 +6,10 @@ Parser = argparse.ArgumentParser(description='Script to create EC2 instances.')
 # --------------------
 # Required Arguments
 # --------------------
-ParseGroup = Parser.add_mutually_exclusive_group()
-ParseGroup.add_argument('-c', '--create-instance', help='Create a new instance.', action='store_true')
-ParseGroup.add_argument('-a', '--start-instance', help='Start (not create) existing EC2 instances.', metavar='INSTANCE-IDs', nargs='+')
-ParseGroup.add_argument('-o', '--stop-instance', help='Stop (not terminate) existing EC2 instances.', metavar='INSTANCE-IDs', nargs='+')
+ParseGroup = Parser.add_argument_group()
+ParseGroup.add_argument('-k', '--key-path', help='Path to the key. Key name is extracted from the filename.', type=str, required=True)
+ParseGroup.add_argument('-i', '--ami-image-id', help='AMI ID.', default=utils.AMI_FREETIER, required=False)
+ParseGroup.add_argument('-t', '--instance-type', help='The instance type.', default=utils.INSTANCE_TYPE_FREETIER, required=False)
 
 Parser.add_argument('--dry-run', action='store_true')
 
@@ -24,14 +24,12 @@ if __name__ == '__main__':
     Args = Parser.parse_args()
     EC2Client = boto3.client('ec2')
 
-    if Args.create_instance:
-        print('[ WARN ]: Since creating instances is complicated, please use the createEC2.py script.')
-        exit()
-    elif Args.terminate_instance:
-        utils.terminateEC2(EC2Client, Args.terminate_instance, DryRun=Args.dry_run)
-    elif Args.start_instance:
-        utils.startEC2(EC2Client, Args.start_instance, DryRun=Args.dry_run)
-    elif Args.stop_instance:
-        utils.stopEC2(EC2Client, Args.stop_instance, DryRun=Args.dry_run)
+    KeyPath = Args.key_path
+    KeyName = os.path.splitext(os.path.basename(KeyPath))[0]
 
+    print('[ INFO ]: Using key name', KeyName, 'at', KeyPath)
+
+    utils.createEC2(EC2Client, KeyName, ImageId=Args.ami_image_id, InstanceType=Args.instance_type, DryRun=Args.dry_run)
+    print('[ INFO ]: Waiting for a few seconds...' )
+    time.sleep(random.randint(5, 10))  # Sleep for a few seconds
     utils.printEC2Status(EC2Client)
