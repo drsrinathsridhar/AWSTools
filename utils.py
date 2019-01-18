@@ -170,7 +170,7 @@ def printEC2Status(EC2Client):
                     if len(INS[Key]) > 0:
                         print(FormatString.format(str(INS[Key][0]['Association']['PublicIp'])), end='')
                     else:
-                        print('NA', end='')
+                        print(FormatString.format('NA'), end='')
                 elif Key == 'State':
                     print(FormatString.format(str(INS[Key]['Name'])), end='')
                 elif Key in RelevantKeys:
@@ -179,9 +179,9 @@ def printEC2Status(EC2Client):
     print(HBar)
 
 
-def createEC2(EC2Client, KeyName, ImageId=AMI_FREETIER, InstanceType=INSTANCE_TYPE_FREETIER):
+def createEC2(EC2Client, KeyName, ImageId=AMI_FREETIER, InstanceType=INSTANCE_TYPE_FREETIER, DryRun=True):
     try:
-        CreateResponse = EC2Client.create_instances(ImageId=ImageId, InstanceType=InstanceType, KeyName=KeyName)
+        CreateResponse = EC2Client.create_instances(ImageId=ImageId, InstanceType=InstanceType, KeyName=KeyName, DryRun=DryRun)
         print(CreateResponse)
         # EC2Name = CreateResponse['FileSystemId']
         # CreateResponse = EC2Client.create_tags(FileSystemId=FSName,
@@ -195,6 +195,22 @@ def createEC2(EC2Client, KeyName, ImageId=AMI_FREETIER, InstanceType=INSTANCE_TY
         # print('[ INFO ]: Created EFS', FSName, 'with Name', Name)
     except Exception as e:
         print('[ WARN ]: Cannot create EC2 instance. Exception', e)
+        return
+
+def startEC2(EC2Client, InstanceIds, DryRun=True):
+    try:
+        CreateResponse = EC2Client.start_instances(InstanceIds=InstanceIds, DryRun=DryRun)
+        print('[ INFO ]: Starting instances -', InstanceIds)
+    except Exception as e:
+        print('[ WARN ]: Cannot start EC2 instances', InstanceIds, '. Exception', e)
+        return
+
+def stopEC2(EC2Client, InstanceIds, DryRun=True):
+    try:
+        CreateResponse = EC2Client.stop_instances(InstanceIds=InstanceIds, DryRun=DryRun)
+        print('[ INFO ]: Stopping instances -', InstanceIds)
+    except Exception as e:
+        print('[ WARN ]: Cannot stop EC2 instances', InstanceIds, '. Exception', e)
         return
 
 def terminateEC2(EC2Client, InstanceIds, DryRun=True):
