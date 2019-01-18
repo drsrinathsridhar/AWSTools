@@ -16,15 +16,18 @@ Some scripts and tools for running deep learning jobs on AWS.
 2. You must setup a shared EFS storage space for **data**---input datasets, output models and weights, and logs (including console outputs).
 Run `manangeEFS.py --help` for instructions on how to create an EFS volume for your projects. Note that multiple projects can share a single EFS.
 
-### Inital Project Setup
+### Initial Project Setup
 
-For each machine learning project, we create a subnet which can contain dedicated instances that are all stopped and started on demand to run tasks.
-All these instances come with an EBS-backed root and can preserve any local data.
-Optionally, datasets used for training and output of training are all written to the common EFS storage setup as described above.
+For each machine learning project, we create an exclusive directory in the shared EFS containing dedicated input/output data.
+We also create a fixed number of GPU instances and stop them for later use.
+These instances can be started or stopped later depending on the project.
+ 
+All instances and data directories are logged under the project EFS directory.
+All instances come with an EBS-backed root and can preserve any local data.
 
 For each project, run the following commands **once** at the beginning.
 
-``python startDLProject.py --help``
+``python startProject.py --help``
 
 # Contact
 Srinath Sridhar  

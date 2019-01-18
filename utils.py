@@ -1,10 +1,13 @@
-import subprocess, json, boto3, uuid, sys
+import subprocess, json, boto3, uuid, sys, time
+from datetime import datetime
 from distutils.util import strtobool
-
 
 #################################################
 # Utils
 #################################################
+def getCurrentEpochTime():
+    return int((datetime.utcnow() - datetime(1970, 1, 1)).total_seconds() * 1e6)
+
 def yesNoQuery(question):
     sys.stdout.write('[ INP ]: %s [y/n]\n' % question)
     while True:
@@ -63,15 +66,6 @@ def printOutput(Output):
     print(Output.decode('unicode-escape'))
 
 
-def getEC2InstPublicIP(InstanceID):
-    Command = 'aws ec2 describe-instances --filters Name=instance-id,Values=' + InstanceID
-    Command = Command + """ --query Reservations[*].Instances[*].{InstanceId:InstanceId,PublicDnsName:PublicDnsName,State:State.Name,PublicIpAddress:PublicIpAddress}"""
-    Output = runCommand(Command)
-    # printOutput(Output)
-    JSON = json.loads(Output)
-
-    return JSON[0][0]['PublicIpAddress']
-
 #################################################
 # Pre-defined EC2 Instance and AMIs
 #################################################
@@ -91,7 +85,7 @@ def printEFSStatus(EFSClient):
 
     # Pretty print details
     print('[ INFO ]: EFS file system details:', end='')
-    RelevantKeys = ['OwnerId', 'CreationToken', 'FileSystemId', 'Name']
+    RelevantKeys = ['OwnerId', 'CreationToken', 'FileSystemId', 'LifeCycleState', 'Name']
     FormatString = '  {:<25.25}  '
     TitleFormatString = '| {:<25.25}  '
     TitleString = ''.join(TitleFormatString.format(e) for e in RelevantKeys)
@@ -107,6 +101,37 @@ def printEFSStatus(EFSClient):
         print('\n', end='')
     print(HBar)
 
+def getEFSInfoByToken(EFSClient, FileSystemId, Token='LifeCycleState'):
+    try:
+        Response = EFSClient.describe_file_systems()
+    except Exception as e:
+        print('[ WARN ]: Unable to get EFS status.')
+        print('[ ERR ]:', e)
+        return
+
+    Output = None
+
+    for FS in Response['FileSystems']:
+        if FS['FileSystemId'] == FileSystemId:
+            Output = FS[Token]
+
+    return Output
+
+def getAllEFSInfoByToken(EFSClient, Token='LifeCycleState'):
+    try:
+        Response = EFSClient.describe_file_systems()
+    except Exception as e:
+        print('[ WARN ]: Unable to get EFS status.')
+        print('[ ERR ]:', e)
+        return
+
+    Output = []
+
+    for FS in Response['FileSystems']:
+        Output.append(FS[Token])
+
+    return Output
+
 def createEFS(EFSClient, Name):
     try:
         CreateResponse = EFSClient.create_file_system(CreationToken='console-'+str(uuid.uuid4()), PerformanceMode='generalPurpose')
@@ -119,7 +144,28 @@ def createEFS(EFSClient, Name):
                 },
             ],
         )
-        print('[ INFO ]: Created EFS', FSName, 'with Name', Name)
+        print('[ INFO ]: Created EFS', FSName, 'with name tag', Name)
+
+        print('[ INFO ]: Waiting for EFS to become available...')
+        FSState = getEFSStatusByToken(EFSClient, FSName)
+        Ctr = 0
+        isSetMountTarget = True
+        while FSState != 'available':
+            time.sleep(0.1)
+            FSState = getEFSStatusByToken(EFSClient, FSName)
+            Ctr = Ctr + 1
+            if Ctr > 30:
+                print('[ WARN ]: State change taking too long. Please setup mount target manually in EFS management console.')
+                isSetMountTarget = False
+                break
+
+        if isSetMountTarget:
+            # Create a default mount target in the current availability zone
+            EC2 = boto3.resource('ec2')
+            DefaultSubnet = list(EC2.subnets.all())[0]
+            print('[ INFO ]: Setup mount target in', DefaultSubnet.id)
+            MountResponse = EFSClient.create_mount_target(FileSystemId=FSName, SubnetId=DefaultSubnet.id)
+
     except Exception as e:
         print('[ WARN ]: Cannot create EFS. Exception', e)
         return
@@ -155,7 +201,7 @@ def printEC2Status(EC2Client, showTerminated=False):
     # Pretty print details
     print('[ INFO ]: EC2 instance details', end='')
     if showTerminated == False:
-        print(' (not showing terimnated instances):', end='')
+        print(' (not showing teriminated instances):', end='')
     else:
         print(':', end='')
 
@@ -203,9 +249,9 @@ def createEC2(EC2Client, KeyName, ImageId=AMI_FREETIER, InstanceType=INSTANCE_TY
         Insts = CreateResponse['Instances']
         if len(Insts) > 0:
             print('[ INFO ]: Created instance', Insts[0]['InstanceId'], 'of type', Insts[0]['InstanceType'])
+            return Insts[0]['InstanceId']
     except Exception as e:
         print('[ WARN ]: Cannot create EC2 instance. Exception', e)
-        return
 
 def startEC2(EC2Client, InstanceIds, DryRun=True):
     try:
@@ -223,19 +269,105 @@ def stopEC2(EC2Client, InstanceIds, DryRun=True):
         print('[ WARN ]: Cannot stop EC2 instances', InstanceIds, '. Exception', e)
         return
 
-def terminateEC2(EC2Client, InstanceIds, DryRun=True):
-    isRemove = yesNoQuery('Are you sure you want to terminate these instances - ' + str(InstanceIds) + '? All data will be lost.')
-    if isRemove == False:
-        print('[ INFO ]: Not deleting any instances from', InstanceIds)
-        return
-
-    try:
-        if yesNoQuery('This action will delete all instances - ' + str(InstanceIds) + '. Proceed?') == False:
+def terminateEC2(EC2Client, InstanceIds, Yes=False, DryRun=True):
+    if Yes == False:
+        isRemove = yesNoQuery('Are you sure you want to terminate these instances - ' + str(InstanceIds) + '? All data will be lost.')
+        if isRemove == False:
             print('[ INFO ]: Not deleting any instances from', InstanceIds)
             return
+
+    try:
+        if Yes == False:
+            if yesNoQuery('This action will delete all instances - ' + str(InstanceIds) + '. Proceed?') == False:
+                print('[ INFO ]: Not deleting any instances from', InstanceIds)
+                return
 
         CreateResponse = EC2Client.terminate_instances(InstanceIds=InstanceIds, DryRun=DryRun)
         print('[ INFO ]: Started terminate on instances -', InstanceIds)
     except Exception as e:
         print('[ WARN ]: Cannot terminate EC2 instances', InstanceIds, '. Exception', e)
         return
+
+# def getEC2InstPublicIP(InstanceID):
+#     Command = 'aws ec2 describe-instances --filters Name=instance-id,Values=' + InstanceID
+#     Command = Command + """ --query Reservations[*].Instances[*].{InstanceId:InstanceId,PublicDnsName:PublicDnsName,State:State.Name,PublicIpAddress:PublicIpAddress}"""
+#     Output = runCommand(Command)
+#     # printOutput(Output)
+#     JSON = json.loads(Output)
+#
+#     return JSON[0][0]['PublicIpAddress']
+
+def getAllEC2InfoByToken(EC2Client, Token='PublicIp', onlyRunning=True):
+    try:
+        Response = EC2Client.describe_instances()
+    except Exception as e:
+        print('[ WARN ]: Unable to get EC2 status.')
+        print('[ ERR ]:', e)
+        return
+
+    Output = []
+    # RelevantKeys = ['InstanceId', 'InstanceType', 'State', 'NetworkInterfaces']
+
+    for RES in Response['Reservations']:
+        for INS in RES['Instances']:
+            if onlyRunning and INS['State']['Name'] != 'running':
+                continue
+
+            for Key in INS:
+                if Token == 'PublicIp' and Key == 'NetworkInterfaces':
+                    if len(INS[Key]) > 0:
+                        if 'Association' in INS[Key][0]:
+                            Output.append(INS[Key][0]['Association']['PublicIp'])
+                        else:
+                            Output.append('Initializing...')
+                    else:
+                        Output.append('NA')
+                elif Token == 'State' and Key == 'State':
+                    Output.append(INS[Key]['Name'])
+                elif Key == Token:
+                    Output.append(INS[Key])
+
+    return Output
+
+def getEC2InfoByToken(EC2Client, InstanceId, Token='PublicIp'):
+    try:
+        Response = EC2Client.describe_instances()
+    except Exception as e:
+        print('[ WARN ]: Unable to get EC2 status.')
+        print('[ ERR ]:', e)
+        return
+
+    Output = None
+    # RelevantKeys = ['InstanceId', 'InstanceType', 'State', 'NetworkInterfaces']
+
+    for RES in Response['Reservations']:
+        for INS in RES['Instances']:
+            if INS['InstanceId'] != InstanceId:
+                continue
+
+            for Key in INS:
+                if Token == 'PublicIp' and Key == 'NetworkInterfaces':
+                    if len(INS[Key]) > 0:
+                        if 'Association' in INS[Key][0]:
+                            Output = INS[Key][0]['Association']['PublicIp']
+                        else:
+                            Output = 'Initializing...'
+                    else:
+                        Output = 'NA'
+                elif Token == 'State' and Key == 'State':
+                    Output = INS[Key]['Name']
+                elif Key == Token:
+                    Output = INS[Key]
+
+    return Output
+
+def waitForEC2(EC2Client, InstanceId, TargetState='running', TimeOut=100):
+    InstState = getEC2InfoByToken(EC2Client, InstanceId, Token='State')
+    Tic = getCurrentEpochTime()
+    while InstState != TargetState:
+        time.sleep(0.1)
+        InstState = getEC2InfoByToken(EC2Client, InstanceId, Token='State')
+        Toc = getCurrentEpochTime()
+        if (Toc-Tic)*1e-6 > TimeOut:
+            print('[ WARN ]: Target state', TargetState, 'not reached by instance', InstanceId)
+            return

@@ -8,6 +8,7 @@ Parser = argparse.ArgumentParser(description='Script to manage EFS filesystems (
 # --------------------
 ParseGroup = Parser.add_mutually_exclusive_group()
 ParseGroup.add_argument('-v', '--describe', action='store_true', help='Describe all available EFS filesystems.')
+ParseGroup.add_argument('-l', '--list-fs-id', action='store_true', help='List all filesystem IDs only.')
 ParseGroup.add_argument('-c', '--create-efs', help='Create a new file system with a name tag.', metavar='EFS_NAME')
 ParseGroup.add_argument('-d', '--delete-efs', help='Delete an existing file system by FileSystemId.', metavar='FS-ID', nargs='+')
 
@@ -30,3 +31,10 @@ if __name__ == '__main__':
         time.sleep(random.randint(2, 5)) # Sleep for a second
 
     utils.printEFSStatus(EFSClient)
+
+    if Args.list_fs_id:
+        AllEFS = utils.getAllEFSInfoByToken(EFSClient, 'FileSystemId')
+        print('[ INFO ]: List of EFS filesystem IDs - ', end='')
+        for FS in AllEFS:
+            print(FS, end=' ')
+        print('\n', end='')

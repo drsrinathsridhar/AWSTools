@@ -8,6 +8,7 @@ Parser = argparse.ArgumentParser(description='Script to manage EC2 instances (de
 # --------------------
 ParseGroup = Parser.add_mutually_exclusive_group()
 ParseGroup.add_argument('-v', '--describe', action='store_true', help='Describe all available EC2 instances.')
+ParseGroup.add_argument('-l', '--list-all', action='store_true', help='List all available EC2 instance IDs.')
 ParseGroup.add_argument('-t', '--terminate-instance', help='Delete existing EC2 instances.', metavar='INSTANCE-IDs', nargs='+')
 ParseGroup.add_argument('-c', '--create-instance', help='Create a new instance.', action='store_true')
 ParseGroup.add_argument('-a', '--start-instance', help='Start (not create) existing EC2 instances.', metavar='INSTANCE-IDs', nargs='+')
@@ -36,6 +37,10 @@ if __name__ == '__main__':
         utils.startEC2(EC2Client, Args.start_instance, DryRun=Args.dry_run)
     elif Args.stop_instance:
         utils.stopEC2(EC2Client, Args.stop_instance, DryRun=Args.dry_run)
+    elif Args.list_all:
+        AllEC2 = utils.getAllEC2InfoByToken(EC2Client, Token='InstanceId')
+        for Inst in AllEC2:
+            print(Inst, end=' ')
+        print('\n', end='')
 
-    time.sleep(random.randint(2, 5))  # Sleep for a few seconds
     utils.printEC2Status(EC2Client, showTerminated=Args.show_terminated)
