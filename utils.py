@@ -153,8 +153,14 @@ def printEC2Status(EC2Client, showTerminated=False):
         return
 
     # Pretty print details
-    print('[ INFO ]: EC2 instance details:', end='')
+    print('[ INFO ]: EC2 instance details', end='')
+    if showTerminated == False:
+        print(' (not showing terimnated instances):', end='')
+    else:
+        print(':', end='')
+
     RelevantKeys = ['InstanceId', 'InstanceType', 'State', 'NetworkInterfaces']
+    InstancesData = []
     FormatString = '  {:<25.25}  '
     TitleFormatString = '| {:<25.25}  '
     TitleString = ''.join(TitleFormatString.format(e) for e in RelevantKeys)
@@ -165,20 +171,29 @@ def printEC2Status(EC2Client, showTerminated=False):
 
     for RES in Response['Reservations']:
         for INS in RES['Instances']:
+            InstData = []
             for Key in INS:
                 if Key == 'NetworkInterfaces':
                     if len(INS[Key]) > 0:
                         if 'Association' in INS[Key][0]:
-                            print(FormatString.format(str(INS[Key][0]['Association']['PublicIp'])), end='')
+                            InstData.append(str(INS[Key][0]['Association']['PublicIp']))
                         else:
-                            print('Initializing...', end='')
+                            InstData.append('Initializing...')
                     else:
-                        print(FormatString.format('NA'), end='')
+                        InstData.append('NA')
                 elif Key == 'State':
-                    StateVal = str(INS[Key]['Name'])
+                    InstData.append(str(INS[Key]['Name']))
                 elif Key in RelevantKeys:
-                    print(FormatString.format(str(INS[Key])), end='')
-            print('\n', end='')
+                    InstData.append(str(INS[Key]))
+            InstancesData.append(InstData)
+
+    InstancesData.sort(key=lambda x: x[2])
+    for Dat in InstancesData:
+        if Dat[2] == 'terminated' and showTerminated == False:
+            continue
+        for Val in Dat:
+            print(FormatString.format(Val), end='')
+        print('\n', end='')
     print(HBar)
 
 

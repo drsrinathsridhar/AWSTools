@@ -14,6 +14,7 @@ ParseGroup.add_argument('-a', '--start-instance', help='Start (not create) exist
 ParseGroup.add_argument('-o', '--stop-instance', help='Stop (not terminate) existing EC2 instances.', metavar='INSTANCE-IDs', nargs='+')
 
 Parser.add_argument('--dry-run', action='store_true')
+Parser.add_argument('--show-terminated', action='store_true')
 
 if __name__ == '__main__':
     if 'linux' not in str(sys.platform):
@@ -37,4 +38,4 @@ if __name__ == '__main__':
         utils.stopEC2(EC2Client, Args.stop_instance, DryRun=Args.dry_run)
 
     time.sleep(random.randint(2, 5))  # Sleep for a few seconds
-    utils.printEC2Status(EC2Client)
+    utils.printEC2Status(EC2Client, showTerminated=Args.show_terminated)
