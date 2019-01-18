@@ -1,4 +1,6 @@
 import os, sys, argparse, json, ipaddress
+import boto3
+from botocore.exceptions import ClientError
 import utils
 
 Parser = argparse.ArgumentParser(description='Initial AWS setup for a deep learning project.')
@@ -18,9 +20,6 @@ Parser.add_argument('--security-group', help='Provide an optional security-group
 
 EFSScriptName = 'makeEFSProjectDir.sh'
 EFSScript = './scripts/' + EFSScriptName
-
-CheckDirScriptName = 'checkDirectoryExists.sh'
-CheckDirScript = './scripts/' + CheckDirScriptName
 
 if __name__ == '__main__':
     if 'linux' not in str(sys.platform):
@@ -52,8 +51,6 @@ if __name__ == '__main__':
         # Copy scripts to instance
         Command = ['scp', '-o', 'StrictHostKeyChecking=no', '-o', 'ConnectTimeout=1000', '-i', Args.key_path, EFSScript, 'ubuntu@'+InstanceIP+':~/']
         Output = utils.runCommandList(Command)
-        Command = ['scp', '-o', 'StrictHostKeyChecking=no', '-o', 'ConnectTimeout=1000', '-i', Args.key_path, CheckDirScript, 'ubuntu@'+InstanceIP+':~/']
-        Output = utils.runCommandList(Command)
 
         # Run script
         Command = ['ssh', '-o', 'StrictHostKeyChecking=no', '-o', 'ConnectTimeout=1000', '-i', Args.key_path, 'ubuntu@'+InstanceIP, 'bash ' + EFSScriptName + ' ' + Args.efs_name + ' ' + Args.project_name]
@@ -61,9 +58,7 @@ if __name__ == '__main__':
         utils.printOutput(Output)
         # Check if project directory exists. If yes, print details of created isntances, existing instances, subnets, etc.
         # If not, create directory and proceed
-        Command = ['ssh', '-o', 'StrictHostKeyChecking=no', '-o', 'ConnectTimeout=1000', '-i', Args.key_path, 'ubuntu@'+InstanceIP, 'bash ' + CheckDirScriptName + ' ./efs/' + Args.project_name]
-        Output = utils.runCommandList(Command)
-        utils.printOutput(Output)
+        # TODO
     except:
         print('[ ERR ]: Failed to create instance or SSH. Aborting.')
         isExit = True

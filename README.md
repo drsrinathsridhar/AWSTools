@@ -4,6 +4,7 @@ Some scripts and tools for running deep learning jobs on AWS.
 ## Requirements
 - Linux
 - Python 3+
+- [Boto3][3]
 - [AWS Command Line Interface][2]
 - AWS account ID and key
 - Enough credits to create GPU instances (these are expensive, beware!)
@@ -12,11 +13,8 @@ Some scripts and tools for running deep learning jobs on AWS.
 
 ### Initial Setup
 1. Setup your AWS CLI tools by running ``aws configure``. See the [AWS CLI documentation][1] for details.
-2. You must setup a shared EFS storage space for **data**---input datasets, output models and weights, and logs (including console outputs). See next for instructions.
-
-### [ Optional ]: EFS Setup
-
-TODO
+2. You must setup a shared EFS storage space for **data**---input datasets, output models and weights, and logs (including console outputs).
+Run `createEFS.py --help` for instructions on how to create an EFS volume.
 
 ### Project Setup
 
@@ -35,3 +33,4 @@ Srinath Sridhar
 
 [1]: https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-configure.html
 [2]: https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-install.html
+[3]: https://github.com/boto/boto3

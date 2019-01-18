@@ -1,4 +1,13 @@
-import subprocess, json
+import subprocess, json, boto3, uuid, sys
+from distutils.util import strtobool
+
+def yesNoQuery(question):
+    sys.stdout.write('[ INP ]: %s [y/n]\n' % question)
+    while True:
+        try:
+            return strtobool(input().lower())
+        except ValueError:
+            sys.stdout.write('[ INP ]: Please respond with \'y\' or \'n\'.\n')
 
 def spCommandTokenize(CommandStr):
     return CommandStr.split()
@@ -52,3 +61,63 @@ def getEC2InstPublicIP(InstanceID):
     JSON = json.loads(Output)
 
     return JSON[0][0]['PublicIpAddress']
+
+def printEFSStatus(EFSClient):
+    try:
+        Response = EFSClient.describe_file_systems()
+    except Exception as e:
+        print('[ WARN ]: Unable to get EFS status.')
+        print('[ ERR ]:', e)
+        return
+
+    # Pretty print details
+    print('[ INFO ]: EFS file system details:', end='')
+    RelevantKeys = ['OwnerId', 'CreationToken', 'FileSystemId', 'Name']
+    FormatString = '  {:<25.25}  '
+    TitleFormatString = '| {:<25.25}  '
+    TitleString = ''.join(TitleFormatString.format(e) for e in RelevantKeys)
+    HBar = '-' * (len(TitleString))
+    print('\n' + HBar)
+    print(TitleString, end='')
+    print('\n' + HBar)
+
+    for FS in Response['FileSystems']:
+        for Key in FS:
+            if Key in RelevantKeys:
+                print(FormatString.format(str(FS[Key])), end='')
+        print('\n', end='')
+    print(HBar)
+
+def createEFS(EFSClient, Name):
+    try:
+        CreateResponse = EFSClient.create_file_system(CreationToken='console-'+str(uuid.uuid4()), PerformanceMode='generalPurpose')
+        FSName = CreateResponse['FileSystemId']
+        CreateResponse = EFSClient.create_tags(FileSystemId=FSName,
+            Tags=[
+                {
+                    'Key': 'Name',
+                    'Value': Name,
+                },
+            ],
+        )
+        print('[ INFO ]: Created EFS', FSName, 'with Name', Name)
+    except Exception as e:
+        print('[ WARN ]: Cannot create EFS. Exception', e)
+        return
+
+def deleteEFS(EFSClient, EFSID):
+    isRemove = yesNoQuery('Are you sure you want to remove EFS ' + EFSID + '? All data will be lost.')
+    if isRemove == False:
+        print('[ INFO ]: Not deleting', EFSID)
+        return
+
+    try:
+        if yesNoQuery('This action will delete all data in ' + EFSID + '. Proceed?') == False:
+            print('[ INFO ]: Not deleting', EFSID)
+            return
+        CreateResponse = EFSClient.delete_file_system(FileSystemId=EFSID)
+        print('[ INFO ]: Delete for EFS', EFSID, 'started. It might take a few seconds before it is deleted.')
+    except Exception as e:
+        print('[ WARN ]: Cannot delete EFS. Exception', e)
+        return
+
