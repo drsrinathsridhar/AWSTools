@@ -144,7 +144,7 @@ def deleteEFS(EFSClient, EFSID):
 #################################################
 # EC2 Tools
 #################################################
-def printEC2Status(EC2Client):
+def printEC2Status(EC2Client, showTerminated=False):
     try:
         Response = EC2Client.describe_instances()
     except Exception as e:
@@ -175,7 +175,7 @@ def printEC2Status(EC2Client):
                     else:
                         print(FormatString.format('NA'), end='')
                 elif Key == 'State':
-                    print(FormatString.format(str(INS[Key]['Name'])), end='')
+                    StateVal = str(INS[Key]['Name'])
                 elif Key in RelevantKeys:
                     print(FormatString.format(str(INS[Key])), end='')
             print('\n', end='')
@@ -185,17 +185,9 @@ def printEC2Status(EC2Client):
 def createEC2(EC2Client, KeyName, ImageId=AMI_FREETIER, InstanceType=INSTANCE_TYPE_FREETIER, MaxCount=1, DryRun=True):
     try:
         CreateResponse = EC2Client.run_instances(ImageId=ImageId, InstanceType=InstanceType, KeyName=KeyName, MinCount=1, MaxCount=MaxCount, DryRun=DryRun)
-        print(CreateResponse)
-        # EC2Name = CreateResponse['FileSystemId']
-        # CreateResponse = EC2Client.create_tags(FileSystemId=FSName,
-        #     Tags=[
-        #         {
-        #             'Key': 'Name',
-        #             'Value': Name,
-        #         },
-        #     ],
-        # )
-        # print('[ INFO ]: Created EFS', FSName, 'with Name', Name)
+        Insts = CreateResponse['Instances']
+        if len(Insts) > 0:
+            print('[ INFO ]: Created instance', Insts[0]['InstanceId'], 'of type', Insts[0]['InstanceType'])
     except Exception as e:
         print('[ WARN ]: Cannot create EC2 instance. Exception', e)
         return
