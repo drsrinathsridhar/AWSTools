@@ -10,13 +10,17 @@ Parser = argparse.ArgumentParser(description='Initial AWS setup for a deep learn
 # --------------------
 Parser.add_argument('--project-name', help='Provide a name for this deep learning project.', required=True)
 Parser.add_argument('--efs-name', help='Provide a name for an existing deep learning EFS where custom directories will be created.', required=True)
-Parser.add_argument('--key-name', help='Provide an SSH key name to be used for creating instances.', required=True)
-Parser.add_argument('--key-path', help='Provide path to private SSH key corresponding to key-name.', required=True)
+# Parser.add_argument('--key-name', help='Provide an SSH key name to be used for creating instances.', required=True)
+# Parser.add_argument('--key-path', help='Provide path to private SSH key corresponding to key-name.', required=True)
 # --------------------
 # Optional Arguments
 # --------------------
 Parser.add_argument('--vpc-id', help='Provide the ID of VPC to use. If not provided some default VPC is used.', required=False, default='None')
 Parser.add_argument('--security-group', help='Provide an optional security-group. If not provided, ''default'' will be used.', required=False, default='default')
+
+# Global variables
+AMI_FREETIER = 'ami-0653e888ec96eab9b'
+INSTANCE_TYPE_FREETIER = 't2.micro'
 
 EFSScriptName = 'makeEFSProjectDir.sh'
 EFSScript = './scripts/' + EFSScriptName
@@ -26,15 +30,21 @@ if __name__ == '__main__':
         raise RuntimeError('Unsupported OS. Only Linux is supported.')
 
     Args = Parser.parse_args()
-    # utils.printArgs(Args)
+    if len(sys.argv) == 1:
+        Parser.print_help()
+        exit()
+
+    EC2Client = boto3.client('ec2')
+
+    utils.printEC2Status(EC2Client)
+
+    exit()
 
     BaseEC2Call = 'aws ec2 '
     BaseEFSCall = 'aws efs '
 
     # Mount EFS directory and check if project name already exists
-    FreeTierAMI = 'ami-0653e888ec96eab9b'
-    FreeTierInstanceType = 't2.micro'
-    Command = BaseEC2Call + 'run-instances --image-id ' + FreeTierAMI + ' --count 1 --instance-type ' + FreeTierInstanceType + ' --key-name ' + Args.key_name + ' --security-groups ' + Args.security_group
+    Command = BaseEC2Call + 'run-instances --image-id ' + AMI_FREETIER + ' --count 1 --instance-type ' + INSTANCE_TYPE_FREETIER + ' --key-name ' + Args.key_name + ' --security-groups ' + Args.security_group
     Output = utils.runCommand(Command)
     # utils.printOutput(Output)
     InstJSON = json.loads(Output)

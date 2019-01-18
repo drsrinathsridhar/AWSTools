@@ -14,9 +14,9 @@ Some scripts and tools for running deep learning jobs on AWS.
 ### Initial Setup
 1. Setup your AWS CLI tools by running ``aws configure``. See the [AWS CLI documentation][1] for details.
 2. You must setup a shared EFS storage space for **data**---input datasets, output models and weights, and logs (including console outputs).
-Run `createEFS.py --help` for instructions on how to create an EFS volume.
+Run `manangeEFS.py --help` for instructions on how to create an EFS volume for your projects. Note that multiple projects can share a single EFS.
 
-### Project Setup
+### Inital Project Setup
 
 For each machine learning project, we create a subnet which can contain dedicated instances that are all stopped and started on demand to run tasks.
 All these instances come with an EBS-backed root and can preserve any local data.
