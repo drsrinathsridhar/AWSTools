@@ -13,11 +13,6 @@ Parser.add_argument('--efs-name', help='Provide a name for an existing deep lear
 Parser.add_argument('--key-name', help='Provide an SSH key name to be used for creating instances.', required=True)
 Parser.add_argument('--key-path', help='Provide path to private SSH key corresponding to key-name.', required=True)
 
-EFSScriptName = 'makeEFSProjectDir.sh'
-EFSScript = './scripts/' + EFSScriptName
-BaseEC2Call = 'aws ec2 '
-BaseEFSCall = 'aws efs '
-
 if __name__ == '__main__':
     if 'linux' not in str(sys.platform):
         raise RuntimeError('Unsupported OS. Only Linux is supported.')
@@ -28,38 +23,44 @@ if __name__ == '__main__':
         exit()
 
     EC2Client = boto3.client('ec2')
-
-    print('[ INFO ]: Creating temporary instance...')
-    InstanceID = utils.createEC2(EC2Client, Args.key_name, utils.AMI_FREETIER, utils.INSTANCE_TYPE_FREETIER, MaxCount=1, DryRun=False)
-    utils.printEC2Status(EC2Client)
-    print(' [ INFO ]: Waiting 10 seconds for instance to start.')
-    utils.waitForEC2(EC2Client, InstanceID, TargetState='running', TimeOut=1)
+    SSMClient = boto3.client('ssm')
 
     try:
-        print(utils.getAllEC2InfoByToken(EC2Client))
-        print(utils.getEC2InfoByToken(EC2Client, InstanceID))
-        exit()
+        print('[ INFO ]: Creating temporary instance...')
+        InstanceID = utils.createEC2(EC2Client, Args.key_name, utils.AMI_FREETIER, utils.INSTANCE_TYPE_FREETIER,
+                                     MaxCount=1, DryRun=False)
+        utils.printEC2Status(EC2Client)
+        Timeout = 100
+        print('[ INFO ]: Waiting maximum of {} seconds for instance to start.'.format(Timeout))
+        utils.waitForEC2(EC2Client, InstanceID, TargetState='running', TimeOut=Timeout)
+        PublicIP = utils.getEC2InfoByToken(EC2Client, InstanceID)
+        print('[ INFO ]: New instance has PublicIp - ', PublicIP)
 
-        # # Mount EFS directory
-        # print('[ INFO ]: SSHing into machine to setup EFS directories... This may take several seconds to a few minutes.')
-        # # Copy scripts to instance
-        # Command = ['scp', '-o', 'StrictHostKeyChecking=no', '-o', 'ConnectTimeout=1000', '-i', Args.key_path, EFSScript, 'ubuntu@'+InstanceIP+':~/']
-        # Output = utils.runCommandList(Command)
-        #
-        # # Run script
-        # Command = ['ssh', '-o', 'StrictHostKeyChecking=no', '-o', 'ConnectTimeout=1000', '-i', Args.key_path, 'ubuntu@'+InstanceIP, 'bash ' + EFSScriptName + ' ' + Args.efs_name + ' ' + Args.project_name]
-        # Output = utils.runCommandList(Command)
-        # utils.printOutput(Output)
-        # # Check if project directory exists. If yes, print details of created isntances, existing instances, subnets, etc.
-        # # If not, create directory and proceed
-        # # TODO
-    except:
-        print('[ ERR ]: Failed to create instance or SSH. Aborting.')
-        utils.terminateEC2(EC2Client, [InstanceID], Yes=True, DryRun=False)
+        ProjectDir = '~/efs/{}'.format(Args.project_name)
+        CommandList = ['sudo apt-get -y install nfs-common',
+                       'mkdir -p efs',
+                       'sudo mount -t nfs4 -o nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2,noresvport {}.efs.us-east-2.amazonaws.com:/ efs'.format(
+                           Args.efs_name)
+                       ]
 
-    # print('[ INFO ]: Instance', InstanceID, 'terminate started.')
-    # Command = BaseEC2Call + 'terminate-instances --instance-ids ' + InstanceID
-    # Output = utils.runCommand(Command)
+        utils.runCommandEC2(Args.key_path, Commands=CommandList, InstancePublicIp=PublicIP, Verbose=1)
+
+
+        ProjectDirExists = utils.existsRemotePath('ubuntu', str(PublicIP), ProjectDir, KeyPath=Args.key_path)
+
+        print('ProjectDirExists:', ProjectDirExists)
+
+        if ProjectDirExists:
+            print('[ INFO ]: Project director already exists at', ProjectDir)
+        else:
+            CommandList = ['sudo mkdir -p {}'.format(ProjectDir), 'ls -l efs']
+
+            utils.runCommandEC2(Args.key_path, Commands=CommandList, InstancePublicIp=PublicIP, Verbose=1)
+    except Exception as e:
+        print('[ ERR ]: Failed to run commands:', e)
+
+    utils.runCommandEC2(Args.key_path, Commands=['sudo umount efs'], InstancePublicIp=PublicIP, Verbose=1)
+    utils.terminateEC2(EC2Client, [InstanceID], Yes=True, DryRun=False)
 
 
 ## OLD BUT USEFUL CODE

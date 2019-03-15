@@ -1,4 +1,4 @@
-import subprocess, json, boto3, uuid, sys, time
+import subprocess, json, boto3, uuid, sys, time, paramiko, pipes
 from datetime import datetime
 from distutils.util import strtobool
 
@@ -61,9 +61,24 @@ def printArgs(Args):
             ArgVal = 'None'
         print('{:<15}:   {:<50}'.format(Arg, ArgVal))
 
-
 def printOutput(Output):
     print(Output.decode('unicode-escape'))
+
+
+def existsRemotePath(Username, Hostname, CheckPath, KeyPath=None):
+    try:
+        status = subprocess.call(
+            ['ssh', '-y', '-i ', KeyPath, Username + '@'+ Hostname, 'test -e {}'.format(pipes.quote(CheckPath))])
+        if status == 0:
+            return True
+        elif status == 1:
+            return False
+        else:
+            print('[ WARN ]: Command likely failed.')
+            return None
+    except Exception as e:
+        print('[ WARN ]: SSH failed - ' + Username + '@'+ Hostname)
+        return None
 
 
 #################################################
@@ -201,7 +216,7 @@ def printEC2Status(EC2Client, showTerminated=False):
     # Pretty print details
     print('[ INFO ]: EC2 instance details', end='')
     if showTerminated == False:
-        print(' (not showing teriminated instances):', end='')
+        print(' (not showing terminated instances):', end='')
     else:
         print(':', end='')
 
@@ -361,13 +376,57 @@ def getEC2InfoByToken(EC2Client, InstanceId, Token='PublicIp'):
 
     return Output
 
-def waitForEC2(EC2Client, InstanceId, TargetState='running', TimeOut=100):
-    InstState = getEC2InfoByToken(EC2Client, InstanceId, Token='State')
+def waitForEC2(SSMClient, InstanceId, TargetState='running', TimeOut=100):
+    InstState = getEC2InfoByToken(SSMClient, InstanceId, Token='State')
     Tic = getCurrentEpochTime()
     while InstState != TargetState:
         time.sleep(0.1)
-        InstState = getEC2InfoByToken(EC2Client, InstanceId, Token='State')
+        InstState = getEC2InfoByToken(SSMClient, InstanceId, Token='State')
         Toc = getCurrentEpochTime()
         if (Toc-Tic)*1e-6 > TimeOut:
             print('[ WARN ]: Target state', TargetState, 'not reached by instance', InstanceId)
             return
+
+def runCommandEC2(KeyPath, Commands, InstancePublicIp, Username='ubuntu', Verbose=0):
+    Key = paramiko.RSAKey.from_private_key_file(KeyPath)
+    SSHClient = paramiko.SSHClient()
+    SSHClient.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+
+    try:
+        print('[ INFO ]: SSH ', Username + '@'+ InstancePublicIp)
+        SSHClient.connect(hostname=InstancePublicIp, username=Username, pkey=Key)
+
+        # Execute a command(cmd) after connecting/ssh to an instance
+        for cmd in Commands:
+            print('[ INFO ]: Running command:', cmd)
+            _, stdout, stderr = SSHClient.exec_command(cmd)
+            if Verbose > 0:
+                print(stdout.read().decode(), flush=True)
+                print(stderr.read().decode(), flush=True)
+
+        SSHClient.close()
+    except Exception as e:
+        print(e)
+
+def runShellScriptEC2(KeyPath, BashScriptPath, InstancePublicIp, Username='ubuntu'):
+    print('[ TODO ]: Not implemented.')
+    return
+    Key = paramiko.RSAKey.from_private_key_file(KeyPath)
+    SSHClient = paramiko.SSHClient()
+    SSHClient.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+
+    with open(BashScriptPath, 'r') as File:
+        ScriptContents = File.read() #.replace('\n', '')
+    # '/usr/bin/python -c "%s"' % command
+
+    try:
+        print('[ INFO ]: SSH ', Username + '@'+ InstancePublicIp)
+        SSHClient.connect(hostname=InstancePublicIp, username=Username, pkey=Key)
+
+        # Execute a command(cmd) after connecting/ssh to an instance
+        stdin, stdout, stderr = SSHClient.exec_command(ScriptContents)
+        print(stdout.read())
+
+        SSHClient.close()
+    except Exception as e:
+        print(e)
