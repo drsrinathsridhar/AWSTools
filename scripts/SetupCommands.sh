@@ -4,7 +4,7 @@ wget -O .bashrc https://raw.githubusercontent.com/drsrinathsridhar/home/stanford
 source .bashrc
 mkdir code
 cd code/
-git clone https://github.com/drsrinathsridhar/CatScan
+git clone https://github.com/drsrinathsridhar/CatRecon
 cd ~
 sudo mkdir /media/efs
 sudo chmod go+rw /media/efs/
