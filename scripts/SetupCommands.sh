@@ -15,4 +15,7 @@ source activate pytorch_p36
 conda install -c conda-forge opencv
 pip install palettable
 pip install --upgrade pip
+pip install git+https://github.com/drsrinathsridhar/tk3dv.git
 
+[ Optional: To restore history ]
+cp ~/input/bash_history ~/.bash_history
