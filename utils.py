@@ -85,6 +85,7 @@ def existsRemotePath(Username, Hostname, CheckPath, KeyPath=None):
 # Pre-defined EC2 Instance and AMIs
 #################################################
 AMI_FREETIER = 'ami-0653e888ec96eab9b'
+AMI_DEEPLEARNING = 'ami-060865e8b5914b4c4'
 INSTANCE_TYPE_FREETIER = 't2.micro'
 
 #################################################
