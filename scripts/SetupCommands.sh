@@ -14,8 +14,9 @@ ln -s /media/efs/output/
 source activate pytorch_p36
 conda install opencv
 pip install palettable
-pip install --upgrade pip
+
 pip install git+https://github.com/drsrinathsridhar/tk3dv.git
 
-[ Optional: To restore history ]
+[ Optional ]
 cp ~/input/bash_history ~/.bash_history
+pip install --upgrade pip
