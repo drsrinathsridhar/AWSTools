@@ -12,7 +12,7 @@ sudo mount -t nfs4 -o nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,ret
 ln -s /media/efs/input/
 ln -s /media/efs/output/
 source activate pytorch_p36
-conda install -c conda-forge opencv
+conda install opencv
 pip install palettable
 pip install --upgrade pip
 pip install git+https://github.com/drsrinathsridhar/tk3dv.git
