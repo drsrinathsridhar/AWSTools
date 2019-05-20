@@ -4,6 +4,8 @@ wget -O .bashrc https://raw.githubusercontent.com/drsrinathsridhar/home/stanford
 source .bashrc
 mkdir code
 cd code/
+# OPTIONAL
+git config credential.helper store
 git clone https://github.com/drsrinathsridhar/CatRecon
 cd ~
 sudo mkdir /media/efs
