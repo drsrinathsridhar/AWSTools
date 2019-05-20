@@ -5,8 +5,9 @@ source .bashrc
 mkdir code
 cd code/
 # OPTIONAL
-git config credential.helper store
 git clone https://github.com/drsrinathsridhar/CatRecon
+cd CatRecon
+git config credential.helper store
 cd ~
 sudo mkdir /media/efs
 sudo chmod go+rw /media/efs/
@@ -16,7 +17,6 @@ ln -s /media/efs/output ~/output
 source activate pytorch_p36
 conda install opencv
 pip install palettable
-
 pip install git+https://github.com/drsrinathsridhar/tk3dv.git
 
 [ Optional ]
