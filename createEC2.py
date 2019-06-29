@@ -14,9 +14,6 @@ ParseGroup.add_argument('-t', '--instance-type', help='The instance type.', defa
 Parser.add_argument('--dry-run', action='store_true')
 
 if __name__ == '__main__':
-    if 'linux' not in str(sys.platform):
-        raise RuntimeError('Unsupported OS. Only Linux is supported.')
-
     if len(sys.argv) == 1:
         Parser.print_help()
         exit()
