@@ -35,6 +35,10 @@ nano /etc/fstab
 fs-fe744587:/ /media/efs efs defaults,_netdev 0 0
 sudo mount -a
 
+sudo ln -s /home/ubuntu/anaconda3/etc/profile.d/conda.sh /etc/profile.d/
+echo "conda activate pytorch_p36" >> ~/.bashrc
+
+
 
 ###############
 # X-NOCS
