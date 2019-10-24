@@ -15,6 +15,7 @@ git config credential.helper store
 cd ~
 sudo mkdir /media/efs
 sudo chmod a+rw /media/efs/
+sudo apt-get install nfs-common
 sudo mount -t nfs4 -o nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2,noresvport fs-fe744587.efs.us-east-2.amazonaws.com:/ /media/efs
 ln -s /media/efs/input ~/input
 ln -s /media/efs/output ~/output
