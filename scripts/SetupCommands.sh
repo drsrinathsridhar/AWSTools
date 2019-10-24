@@ -31,8 +31,8 @@ git clone https://github.com/aws/efs-utils
 cd efs-utils
 ./build-deb.sh
 sudo apt-get -y install ./build/amazon-efs-utils*deb
-nano /etc/fstab
-fs-fe744587:/ /media/efs efs defaults,_netdev 0 0
+sudo nano /etc/fstab
+fs-fe744587:/ /media/HNOCS efs defaults,_netdev 0 0
 sudo mount -a
 
 sudo ln -s /home/ubuntu/anaconda3/etc/profile.d/conda.sh /etc/profile.d/
