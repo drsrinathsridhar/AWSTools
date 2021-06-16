@@ -1,6 +1,17 @@
 #!/bin/bash
 
 ###############
+# Generic
+###############
+wget -O .bashrc.user https://raw.githubusercontent.com/drsrinathsridhar/home/stanford/.bashrc.user
+wget -O .bashrc https://raw.githubusercontent.com/drsrinathsridhar/home/stanford/.bashrc
+source .bashrc
+mkdir code
+cd code/
+
+
+
+###############
 # H-NOCS
 ###############
 wget -O .bashrc.user https://raw.githubusercontent.com/drsrinathsridhar/home/stanford/.bashrc.user
